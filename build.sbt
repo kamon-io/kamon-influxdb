@@ -16,7 +16,7 @@
 val kamonCore         = "io.kamon"                  %%  "kamon-core"            % "0.6.6"
 val asyncHttpClient   = "org.asynchttpclient"       %   "async-http-client"     % "2.0.24"
 
-name := "kamon-spm"
+name := "kamon-influxdb"
 
 parallelExecution in Test in Global := false
 
