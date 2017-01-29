@@ -18,6 +18,8 @@ val asyncHttpClient   = "org.asynchttpclient"       %   "async-http-client"     
 
 name := "kamon-spm"
 
+parallelExecution in Test in Global := false
+
 libraryDependencies ++=
     compileScope(kamonCore, akkaDependency("slf4j").value, asyncHttpClient) ++
     testScope(scalatest, akkaDependency("testkit").value, slf4jApi, slf4jnop)
