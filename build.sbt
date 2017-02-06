@@ -13,12 +13,12 @@
  */
 
 val kamonCore         = "io.kamon"                  %%  "kamon-core"            % "0.6.6"
-val opentsdb = "net.opentsdb" % "opentsdb" % "2.3.0" //excludeAll(
-//   ExclusionRule(organization = "ch.qos.logback"),
-//   ExclusionRule(organization = "com.google.gwt"),
-//   ExclusionRule(organization = "net.opentsdb", artifact = "opentsdb_gwt_theme"),
-//   ExclusionRule(organization = "org.jgrapht")
-//   )
+val opentsdb = "net.opentsdb" % "opentsdb" % "2.3.0" excludeAll(
+   ExclusionRule(organization = "ch.qos.logback"),
+   ExclusionRule(organization = "com.google.gwt"),
+   ExclusionRule(organization = "net.opentsdb", artifact = "opentsdb_gwt_theme"),
+   ExclusionRule(organization = "org.jgrapht")
+   )
 val hbase = "org.hbase" % "asynchbase" % "1.7.2"
 name := "kamon-opentsdb"
 
