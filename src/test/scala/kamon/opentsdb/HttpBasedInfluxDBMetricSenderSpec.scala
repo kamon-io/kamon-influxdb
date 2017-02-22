@@ -60,7 +60,7 @@ class HttpBasedInfluxDBMetricSenderSpec extends BaseKamonSpec("generator-spec") 
         metrics.histogram("foo").record(30)
         val (sender, tick) = setup
         Thread.sleep(1000)
-        sender
+        Mockito.verify(sender).appendPoint(DataPoint("counter/foo", Map("host" -> "KenPC"), tick.to.toTimestamp.seconds, 1))
      }
 
 //    "connect to the correct database" in new Fixture(influxDBConfig) {

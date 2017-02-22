@@ -12,7 +12,7 @@
  * =========================================================================================
  */
 
-val kamonCore         = "io.kamon"                  %%  "kamon-core"            % "0.6.6"
+val kamonCore         = "io.kamon"                  %%  "kamon-core"            % "0.6.5"
 val opentsdb = "net.opentsdb" % "opentsdb" % "2.3.0" excludeAll(
    ExclusionRule(organization = "ch.qos.logback"),
    ExclusionRule(organization = "com.google.gwt"),
@@ -21,7 +21,7 @@ val opentsdb = "net.opentsdb" % "opentsdb" % "2.3.0" excludeAll(
    )
 val hbase = "org.hbase" % "asynchbase" % "1.7.2"
 name := "kamon-opentsdb"
-
+isSnapshot := true
 parallelExecution in Test in Global := false
 
 libraryDependencies ++=

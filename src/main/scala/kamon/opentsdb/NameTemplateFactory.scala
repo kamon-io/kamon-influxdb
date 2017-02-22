@@ -4,10 +4,6 @@ import java.util.regex.Pattern
 
 import akka.actor.ReflectiveDynamicAccess
 import com.typesafe.config.Config
-import kamon.metric.instrument.{Counter, Histogram, InstrumentSnapshot}
-import kamon.metric.{Entity, MetricKey}
-import kamon.opentsdb.names.{NormalizedRule, Rule, StaticValueRule}
-import kamon.opentsdb.stats.Stat
 
 import scala.collection.JavaConverters._
 import scala.collection.immutable
@@ -44,19 +40,12 @@ class NameTemplateFactory(config : Config, defaultPath : String = "default.metri
    }.toSeq
 
 
-   def createCounterGenerator() = {
-      val nameGenerator = createNameGenerator("metric.counter")
-      val tagGenerator = createTagGenerator("metric.counter")
-
-      new CounterDataPointGenerator(nameGenerator, tagGenerator)
-   }
-
-   def createHistogramGenerator(path : String): HistogramDataPointGenerator = {
-      val nameGenerator = createNameGenerator(path)
-      val tagGenerators = createTagGenerator(path)
-      val stats = createStats(path)
-
-      new HistogramDataPointGenerator(true, "stat", stats, nameGenerator, tagGenerators)
+   def createDataPointGenerator(path : String): DataPointGenerator = {
+      new DataPointGenerator(
+         createStats(path),
+         createNameGenerator(path),
+         createTagGenerator(path),
+         createTimestampGenerator(path))
    }
 
    def createNameGenerator(path : String) : MetricNameGenerator = {
@@ -93,12 +82,26 @@ class NameTemplateFactory(config : Config, defaultPath : String = "default.metri
       }
 
       val dynamic = new ReflectiveDynamicAccess(getClass.getClassLoader)
-      stats.asScala.toList.flatMap { stat : String =>
+      stats.asScala.toList.map { stat : String =>
          statLookup.find { case (pattern, className) =>
             pattern.matcher(stat).matches()
-         }.map { _._2 }.map { className =>
-            dynamic.createInstanceFor[Stat](className, immutable.Seq((classOf[String], stat))).get
+         } match {
+            case Some((pattern, className)) => dynamic.createInstanceFor[Stat](className, immutable.Seq((classOf[String], stat))).get
+            case None => throw new Exception(s"Cannot find configuration for stat '$stat'")
          }
+      }
+   }
+
+   def createTimestampGenerator(path : String) = {
+      val value = if (config.hasPath(s"$path.timestamp")) {
+         config.getString(s"$path.timestamp")
+      } else {
+         config.getString(s"$defaultPath.timestamp")
+      }
+
+      value match {
+         case "seconds" => SecondTimestampGenerator
+         case "milliseconds" => MilliSecondTimestampGenerator
       }
    }
 

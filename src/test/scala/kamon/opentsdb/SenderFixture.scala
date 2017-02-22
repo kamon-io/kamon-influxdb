@@ -17,6 +17,7 @@
 package kamon.opentsdb
 
 import java.lang.management.ManagementFactory
+import java.time.Instant
 
 import kamon.metric._
 import kamon.metric.instrument.{Counter, InstrumentFactory}
@@ -26,7 +27,7 @@ trait SenderFixture {
   val metrics : MetricsModuleImpl
   val hostName = ManagementFactory.getRuntimeMXBean.getName.split('@')(1)
 
-  val from = MilliTimestamp.now
+  val from = MilliTimestamp(Instant.now().minusMillis(1000).toEpochMilli)
   val to = MilliTimestamp.now
 
   def buildRecorder(name: String): TestEntityRecorder =

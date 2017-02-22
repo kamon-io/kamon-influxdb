@@ -17,6 +17,7 @@
 package kamon.opentsdb
 
 import akka.actor.{Actor, Props}
+import akka.event.Logging
 import com.typesafe.config.Config
 import kamon.metric.SubscriptionsDispatcher.TickMetricSnapshot
 
@@ -27,32 +28,34 @@ object GeneratorActor {
   def props(config: Config): Props = Props(classOf[GeneratorActor], config, new DirectDataPointSender(config.getString("direct.quorum")))
 }
 
-class GeneratorActor(val config: Config, sender : DataPointSender) extends Actor  {
+class GeneratorActor(val config: Config, sender : DataPointSender) extends Actor {
    implicit protected val actorSystem = context.system
    val factory = new NameTemplateFactory(config)
 
    val categoryGenerators = config.getObject("subscriptions").keySet().asScala.collect {
-      case "counter" => "counter" -> factory.createCounterGenerator()
-      case category => category -> factory.createHistogramGenerator(s"metric.${category}")
+      case category => category -> factory.createDataPointGenerator(s"metric.${category}")
    }.toMap
 
-   val timestamp : (TickMetricSnapshot) => Long = config.getString("timestamp") match {
-      case "seconds" => (tick : TickMetricSnapshot) => tick.to.toTimestamp.seconds
-      case "milliseconds" => (tick : TickMetricSnapshot) => tick.to.millis
-   }
 
    def receive = {
-      case tick: TickMetricSnapshot =>
-         generateMetricsData(tick)
+      case tick: TickMetricSnapshot => generateMetricsData(tick)
+   }
+
+   override def postStop(): Unit = {
+      Logging(context.system, this).info("Shutting down TSDB sender")
+      sender.shutdown()
    }
 
    protected def generateMetricsData(tick: TickMetricSnapshot): Unit = {
-      val ts = timestamp(tick)
+      Logging(context.system, this).info("processing tick")
       for {
          (entity, snapshot) <- tick.metrics
          (metricKey, metricSnapshot) <- snapshot.metrics
-      } {
-         categoryGenerators(entity.category)(entity, metricKey, ts, metricSnapshot).foreach(sender.appendPoint)
+      } yield {
+         val ctx = MetricContext(tick, entity, metricKey, metricSnapshot)
+         val points = categoryGenerators(entity.category)(ctx)
+         println(points)
+         points.foreach(sender.appendPoint)
       }
    }
 }

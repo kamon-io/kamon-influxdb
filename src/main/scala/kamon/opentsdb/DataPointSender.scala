@@ -7,10 +7,11 @@ import org.hbase.async.HBaseClient
 
 import scala.collection.JavaConverters._
 
-
-case class DataPoint(metric : String, tags : Map[String, String], timestamp : Long, value : Long)
+case class DataPoint(metric : String, tags : Map[String, String], timestamp : Long, value : AnyVal)
 
 trait DataPointSender {
+   def shutdown(): Unit
+
    def appendPoint(point : DataPoint)
 
    def flush()
@@ -21,7 +22,12 @@ class DirectDataPointSender(quorum : String) extends DataPointSender {
    db.getConfig.setAutoMetric(true)
 
    override def appendPoint(point: DataPoint): Unit = {
-      db.addPoint(point.metric, point.timestamp, point.value, point.tags.asJava).addErrback(new Callback[Unit, Object] {
+      val deferred = point.value match {
+         case value : Double => db.addPoint(point.metric, point.timestamp, value, point.tags.asJava)
+         case value : Long => db.addPoint(point.metric, point.timestamp, value, point.tags.asJava)
+      }
+
+      deferred.addErrback(new Callback[Unit, Object] {
          override def call(arg: Object): Unit = {
             println(arg)
          }
@@ -30,5 +36,10 @@ class DirectDataPointSender(quorum : String) extends DataPointSender {
 
    override def flush(): Unit = {
       db.flush().join()
+   }
+
+   override def shutdown(): Unit = {
+      flush()
+      db.shutdown().join()
    }
 }

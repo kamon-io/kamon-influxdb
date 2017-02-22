@@ -16,63 +16,31 @@
 
 package kamon.opentsdb
 
-import kamon.metric.instrument.{Counter, Histogram, InstrumentSnapshot}
-import kamon.metric.{Entity, MetricKey}
-import kamon.opentsdb.names.NormalizedRule
-import kamon.opentsdb.stats.Stat
-
-trait DataPointGenerator {
-   def apply(entity: Entity, metricKey: MetricKey, timestamp : Long, snapshot : InstrumentSnapshot): Seq[DataPoint]
-}
-
-class CounterDataPointGenerator(nameGenerator : MetricNameGenerator, tagGenerator: MetricTagGenerator) extends DataPointGenerator {
-   def apply(entity: Entity, metricKey: MetricKey, timestamp : Long, snapshot : InstrumentSnapshot): Seq[DataPoint] = {
-      snapshot match {
-         case cs : Counter.Snapshot =>
-            Seq(DataPoint(nameGenerator(entity, metricKey), tagGenerator(entity, metricKey), timestamp, cs.count))
-      }
-   }
-}
-
-class HistogramDataPointGenerator(includeCount : Boolean,
-                                  statTag : String,
-                                  stats : Seq[Stat],
-                                  nameGenerator : MetricNameGenerator,
-                                  tagGenerator: MetricTagGenerator
-                                 ) extends DataPointGenerator {
-   def apply(entity: Entity, metricKey: MetricKey, timestamp: Long, snapshot: InstrumentSnapshot): Seq[DataPoint] = {
-      snapshot match {
-         case hs: Histogram.Snapshot =>
-            val name = nameGenerator(entity, metricKey)
-            val tags = tagGenerator(entity, metricKey)
-
-            val counterStat = if (includeCount) {
-               Seq(DataPoint(nameGenerator(entity, metricKey, "counter"), tags, timestamp, hs.numberOfMeasurements))
-            } else {
-               Nil
-            }
-
-            counterStat ++ stats.map { stat =>
-               DataPoint(name, tags + (statTag -> stat.name), timestamp, stat(hs))
-            }
+class DataPointGenerator(stats : Seq[Stat],
+                         nameGenerator : MetricNameGenerator,
+                         tagGenerator : MetricTagGenerator,
+                         timeGenerator : TimestampGenerator
+                        ) {
+   def apply(ctx : MetricContext): Seq[DataPoint] = {
+      stats.flatMap { stat =>
+         val name = nameGenerator(ctx, stat)
+         val tags = tagGenerator(ctx, stat)
+         val pf = stat(ctx)
+         pf.lift(ctx.snapshot).map { value => DataPoint(name, tags, timeGenerator(ctx, stat), value) }
       }
    }
 }
 
 
 class MetricNameGenerator(nameGenerators : Seq[NormalizedRule], separator: String) {
-   def apply(entity: Entity, metricKey: MetricKey) : String = {
-      nameGenerators.map(_.apply(entity, metricKey)).filter { _.nonEmpty }.mkString(separator)
-   }
-
-   def apply(entity: Entity, metricKey: MetricKey, suffix : String) : String = {
-      s"${apply(entity, metricKey)}$separator$suffix"
+   def apply(ctx : MetricContext, stat : Stat) : String = {
+      nameGenerators.map(_.apply(ctx, stat)).filter { _.nonEmpty }.mkString(separator)
    }
 }
 
 class MetricTagGenerator(tagGenerators : Map[String, NormalizedRule]) {
-   def apply(entity: Entity, metricKey: MetricKey) = {
-      tagGenerators.map { case (tagName, generator) => tagName -> generator(entity, metricKey)}.filter( _._2.nonEmpty )
+   def apply(ctx : MetricContext, stat : Stat) = {
+      ctx.entity.tags ++ tagGenerators.map { case (tagName, generator) => tagName -> generator(ctx, stat)}.filter( _._2.nonEmpty )
    }
 }
 
