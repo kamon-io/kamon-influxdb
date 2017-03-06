@@ -1,5 +1,7 @@
 package kamon.opentsdb
 
+import akka.actor.ActorSystem
+import akka.event.Logging
 import com.stumbleupon.async.Callback
 import net.opentsdb.core.TSDB
 import net.opentsdb.utils.Config
@@ -7,8 +9,14 @@ import org.hbase.async.HBaseClient
 
 import scala.collection.JavaConverters._
 
+/**
+  * A datapoint to be committed to OpenTSDB
+  */
 case class DataPoint(metric : String, tags : Map[String, String], timestamp : Long, value : AnyVal)
 
+/**
+  * Implementing classes can store [[DataPoint]] in OpenTSDB
+  */
 trait DataPointSender {
    def shutdown(): Unit
 
@@ -17,7 +25,11 @@ trait DataPointSender {
    def flush()
 }
 
-class DirectDataPointSender(quorum : String) extends DataPointSender {
+/**
+  * An [[DataPointSender]] implmentation that writes directly to HBase using the [[TSDB]] api
+  */
+class DirectDataPointSender(system: ActorSystem, quorum : String) extends DataPointSender {
+   val log = Logging(system, classOf[DirectDataPointSender])
    val db = new TSDB(new HBaseClient(quorum), new Config(false))
    db.getConfig.setAutoMetric(true)
 
@@ -29,7 +41,7 @@ class DirectDataPointSender(quorum : String) extends DataPointSender {
 
       deferred.addErrback(new Callback[Unit, Object] {
          override def call(arg: Object): Unit = {
-            println(arg)
+            log.warning(arg.toString)
          }
       })
    }

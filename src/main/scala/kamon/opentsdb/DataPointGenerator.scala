@@ -32,16 +32,8 @@ class DataPointGenerator(stats : Seq[Stat],
 }
 
 
-class MetricNameGenerator(nameGenerators : Seq[NormalizedRule], separator: String) {
-   def apply(ctx : MetricContext, stat : Stat) : String = {
-      nameGenerators.map(_.apply(ctx, stat)).filter { _.nonEmpty }.mkString(separator)
-   }
-}
 
-class MetricTagGenerator(tagGenerators : Map[String, NormalizedRule]) {
-   def apply(ctx : MetricContext, stat : Stat) = {
-      ctx.entity.tags ++ tagGenerators.map { case (tagName, generator) => tagName -> generator(ctx, stat)}.filter( _._2.nonEmpty )
-   }
-}
+
+
 
 

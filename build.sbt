@@ -12,17 +12,19 @@
  * =========================================================================================
  */
 
-val kamonCore         = "io.kamon"                  %%  "kamon-core"            % "0.6.5"
+val kamonCore         = "io.kamon"                  %%  "kamon-core"            % "0.6.6"
 val opentsdb = "net.opentsdb" % "opentsdb" % "2.3.0" excludeAll(
    ExclusionRule(organization = "ch.qos.logback"),
    ExclusionRule(organization = "com.google.gwt"),
    ExclusionRule(organization = "net.opentsdb", artifact = "opentsdb_gwt_theme"),
    ExclusionRule(organization = "org.jgrapht")
    )
+
 val hbase = "org.hbase" % "asynchbase" % "1.7.2"
 name := "kamon-opentsdb"
 isSnapshot := true
 parallelExecution in Test in Global := false
+crossScalaVersions := Seq("2.10.6", "2.11.8", "2.12.1")
 
 libraryDependencies ++=
     compileScope(kamonCore, akkaDependency("slf4j").value, opentsdb, hbase) ++

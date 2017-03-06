@@ -23,6 +23,9 @@ import kamon.util.ConfigTools.Syntax
 
 import scala.collection.JavaConverters._
 
+/**
+  * OpenTSDB Extension
+  */
 object OpenTSDB extends ExtensionId[OpenTSDBExtension] with ExtensionIdProvider {
   override def createExtension(system: ExtendedActorSystem): OpenTSDBExtension = new OpenTSDBExtension(system)
   override def lookup(): ExtensionId[_ <: Extension] = OpenTSDB
@@ -31,20 +34,23 @@ object OpenTSDB extends ExtensionId[OpenTSDBExtension] with ExtensionIdProvider 
 class OpenTSDBExtension(system: ExtendedActorSystem) extends Kamon.Extension {
   implicit val actorSystem = system
 
-  val log = Logging(system, classOf[OpenTSDBExtension])
-  log.info("Starting the Kamon(OpenTSDB) extension")
+  Logging(system, classOf[OpenTSDBExtension]).info("Starting the Kamon(OpenTSDB) extension")
 
   private val config = system.settings.config
   private val openTSDBConfig = config.getConfig("kamon.opentsdb")
-  val metricsExtension = Kamon.metrics
-
-  protected val metricsListener = system.actorOf(GeneratorActor.props(openTSDBConfig), "opentsdb-metrics-generator")
+  val sender = new DirectDataPointSender(system, config.getString("direct.quorum"))
+  protected val metricsListener = system.actorOf(DataPointGeneratingActor.props(openTSDBConfig, sender), "opentsdb-metrics-generator")
 
   protected val subscriptions = openTSDBConfig.getConfig("subscriptions")
 
   subscriptions.firstLevelKeys.foreach { subscriptionCategory ⇒
     subscriptions.getStringList(subscriptionCategory).asScala.foreach { pattern ⇒
-      metricsExtension.subscribe(subscriptionCategory, pattern, metricsListener, permanently = true)
+      Kamon.metrics.subscribe(subscriptionCategory, pattern, metricsListener, permanently = true)
     }
+  }
+
+  actorSystem.registerOnTermination {
+    Logging(actorSystem, classOf[OpenTSDBExtension]).info("Shutting down TSDB sender")
+    sender.shutdown()
   }
 }

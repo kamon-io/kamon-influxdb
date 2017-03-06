@@ -7,13 +7,18 @@ import com.typesafe.config.Config
 
 import scala.collection.JavaConverters._
 import scala.collection.immutable
+import kamon.util.ConfigTools.Syntax
 
-class NameTemplateFactory(config : Config, defaultPath : String = "default.metric") {
+
+/**
+  * Creates [[DataPointGenerator]] based on the configuration.
+  */
+class DataPointGeneratorFactory(config : Config, defaultPath : String = "default") {
 
    val ruleLookup = {
       val dynamic = new ReflectiveDynamicAccess(getClass.getClassLoader)
       val rules = config.getConfig("rules")
-      rules.root().keySet().asScala.map { key =>
+      rules.firstLevelKeys.map { key =>
          val generator = if (rules.hasPath(s"$key.value")) {
             new StaticValueRule(rules.getString(s"$key.value"))
          } else {

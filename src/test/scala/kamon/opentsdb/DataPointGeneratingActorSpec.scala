@@ -16,7 +16,6 @@
 
 package kamon.opentsdb
 
-import akka.actor.Props
 import com.typesafe.config.{Config, ConfigFactory}
 import kamon.metric.MetricsModuleImpl
 import kamon.metric.SubscriptionsDispatcher.TickMetricSnapshot
@@ -25,9 +24,7 @@ import kamon.testkit.BaseKamonSpec
 import org.mockito.Mockito
 import org.scalatest.mockito.MockitoSugar
 
-case class RequestData(uri: String, payload: String)
-
-class HttpBasedInfluxDBMetricSenderSpec extends BaseKamonSpec("generator-spec") with MockitoSugar {
+class DataPointGeneratingActorSpec extends BaseKamonSpec("generator-spec") with MockitoSugar {
 
    override lazy val config = ConfigFactory.parseString("kamon.opentsdb.name.parts.application.value = testApp").withFallback(ConfigFactory.load()).resolve()
 
@@ -36,8 +33,7 @@ class HttpBasedInfluxDBMetricSenderSpec extends BaseKamonSpec("generator-spec") 
 
       def setup : (DataPointSender, TickMetricSnapshot) = {
          val sender = mock[DataPointSender]
-         //val metricsSender = system.actorOf(Props(classOf[GeneratorActor], fixtureConfig, sender))
-         val metricsSender = system.actorOf(GeneratorActor.props(fixtureConfig))
+         val metricsSender = system.actorOf(DataPointGeneratingActor.props(fixtureConfig, sender))
          val snapshots = metrics.collectSnapshots(CollectionContext(500))
          val tick = TickMetricSnapshot(from, to, snapshots)
          metricsSender ! tick
@@ -51,7 +47,8 @@ class HttpBasedInfluxDBMetricSenderSpec extends BaseKamonSpec("generator-spec") 
        metrics.counter("foo").increment()
        val (sender, tick) = setup
        Thread.sleep(1000)
-       Mockito.verify(sender).appendPoint(DataPoint("counter/foo", Map("host" -> "KenPC"), tick.to.toTimestamp.seconds, 1))
+       Mockito.verify(sender).appendPoint(DataPoint("counter/foo/count", Map("host" -> "KenPC"), tick.to.toTimestamp.seconds, 1))
+       Mockito.verify(sender).appendPoint(DataPoint("counter/foo/rate", Map("host" -> "KenPC"), tick.to.toTimestamp.seconds, 1))
     }
 
      "generate metrics for histogram" in new Fixture(config.getConfig("kamon.opentsdb")) {
@@ -60,7 +57,14 @@ class HttpBasedInfluxDBMetricSenderSpec extends BaseKamonSpec("generator-spec") 
         metrics.histogram("foo").record(30)
         val (sender, tick) = setup
         Thread.sleep(1000)
-        Mockito.verify(sender).appendPoint(DataPoint("counter/foo", Map("host" -> "KenPC"), tick.to.toTimestamp.seconds, 1))
+        Mockito.verify(sender).appendPoint(DataPoint("histogram/foo/count", Map("host" -> "KenPC"), tick.to.toTimestamp.seconds, 3))
+        Mockito.verify(sender).appendPoint(DataPoint("histogram/foo/rate", Map("host" -> "KenPC"), tick.to.toTimestamp.seconds, 3))
+        Mockito.verify(sender).appendPoint(DataPoint("histogram/foo/min", Map("host" -> "KenPC"), tick.to.toTimestamp.seconds, 10))
+        Mockito.verify(sender).appendPoint(DataPoint("histogram/foo/max", Map("host" -> "KenPC"), tick.to.toTimestamp.seconds, 30))
+        Mockito.verify(sender).appendPoint(DataPoint("histogram/foo/median", Map("host" -> "KenPC"), tick.to.toTimestamp.seconds, 15))
+        Mockito.verify(sender).appendPoint(DataPoint("histogram/foo/mean", Map("host" -> "KenPC"), tick.to.toTimestamp.seconds, 18))
+        Mockito.verify(sender).appendPoint(DataPoint("histogram/foo/90", Map("host" -> "KenPC"), tick.to.toTimestamp.seconds, 30))
+        Mockito.verify(sender).appendPoint(DataPoint("histogram/foo/99", Map("host" -> "KenPC"), tick.to.toTimestamp.seconds, 30))
      }
 
 //    "connect to the correct database" in new Fixture(influxDBConfig) {
