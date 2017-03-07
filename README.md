@@ -40,13 +40,13 @@ libraryDependencies += "io.kamon" %% "kamon-opentsdb" % "0.6.6"
 Configuration
 -------------
 
-Please refer to the [src/main/resourcs/reference.conf](reference configuration) for more details.
+Please refer to the [reference configuration](src/main/resourcs/reference.conf) for more details.
 
 #### Common actions (i.e. TLDR)
-Connect to OpenTSDB - Set `kamon.opentsdb.direct.quorum` to your zookeeper quorum
-Set application name - Set `kamon.opentsdb.rules.application.value`
-Override host name - Set `kamon.opentsdb.rules.host.value`
-Set precision of timestamps - Set `kamon.opentsdb.default.timestamp` to 'seconds' or 'milliseconds'
+Connect to OpenTSDB - Set `kamon.opentsdb.direct.quorum` to your zookeeper quorum  
+Set application name - Set `kamon.opentsdb.rules.application.value`  
+Override host name - Set `kamon.opentsdb.rules.host.value`  
+Set precision of timestamps - Set `kamon.opentsdb.default.timestamp` to 'seconds' or 'milliseconds'  
 
 
 #### Connection
@@ -198,6 +198,5 @@ kamon.opentsdb.stats.integral = "leider.ken.application.IntegralStat"
 kamon.opentsdb.counter.stats = [ count, rate, integral ] 
 ```
 
-[InfluxDB]: https://influxdata.com/time-series-platform/influxdb/
-[Chronograf]: https://influxdata.com/time-series-platform/chronograf/
-[Grafana]: http://grafana.org
+[OpenTSDB]: http://http://opentsdb.net/
+
