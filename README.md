@@ -89,7 +89,7 @@ This design allows you to easily customize the metric name by reordering,
 adding, and removing [rules](#rules) as you see fit. `kamon.opentsdb.name.separator` is inserted between each rule who result is non-empty.
 Empty rules are removed from the metric name
 
-#### Metrics Tags
+#### Metric Tags
 
 All tags associated with the kamon metric will be passed through to OpenTSDB.
 Additional tags may be added by mapping tag names to [rules](#rules)
