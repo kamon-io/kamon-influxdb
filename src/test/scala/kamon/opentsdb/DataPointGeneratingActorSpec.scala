@@ -16,6 +16,8 @@
 
 package kamon.opentsdb
 
+import java.lang.management.ManagementFactory
+
 import com.typesafe.config.{Config, ConfigFactory}
 import kamon.metric.MetricsModuleImpl
 import kamon.metric.SubscriptionsDispatcher.TickMetricSnapshot
@@ -41,14 +43,16 @@ class DataPointGeneratingActorSpec extends BaseKamonSpec("generator-spec") with 
       }
   }
 
-
+   val hostname = ManagementFactory.getRuntimeMXBean.getName.split('@')(1)
+   
+   
   "the OpenTSDBSender" should {
     "generate metrics for counters" in new Fixture(config.getConfig("kamon.opentsdb")) {
        metrics.counter("foo").increment()
        val (sender, tick) = setup
        Thread.sleep(1000)
-       Mockito.verify(sender).appendPoint(DataPoint("counter/foo/count", Map("host" -> "KenPC"), tick.to.toTimestamp.seconds, 1))
-       Mockito.verify(sender).appendPoint(DataPoint("counter/foo/rate", Map("host" -> "KenPC"), tick.to.toTimestamp.seconds, 1))
+       Mockito.verify(sender).appendPoint(DataPoint("counter/foo/count", Map("host" -> hostname), tick.to.toTimestamp.seconds, 1))
+       Mockito.verify(sender).appendPoint(DataPoint("counter/foo/rate", Map("host" -> hostname), tick.to.toTimestamp.seconds, 1))
     }
 
      "generate metrics for histogram" in new Fixture(config.getConfig("kamon.opentsdb")) {
@@ -57,65 +61,15 @@ class DataPointGeneratingActorSpec extends BaseKamonSpec("generator-spec") with 
         metrics.histogram("foo").record(30)
         val (sender, tick) = setup
         Thread.sleep(1000)
-        Mockito.verify(sender).appendPoint(DataPoint("histogram/foo/count", Map("host" -> "KenPC"), tick.to.toTimestamp.seconds, 3))
-        Mockito.verify(sender).appendPoint(DataPoint("histogram/foo/rate", Map("host" -> "KenPC"), tick.to.toTimestamp.seconds, 3))
-        Mockito.verify(sender).appendPoint(DataPoint("histogram/foo/min", Map("host" -> "KenPC"), tick.to.toTimestamp.seconds, 10))
-        Mockito.verify(sender).appendPoint(DataPoint("histogram/foo/max", Map("host" -> "KenPC"), tick.to.toTimestamp.seconds, 30))
-        Mockito.verify(sender).appendPoint(DataPoint("histogram/foo/median", Map("host" -> "KenPC"), tick.to.toTimestamp.seconds, 15))
-        Mockito.verify(sender).appendPoint(DataPoint("histogram/foo/mean", Map("host" -> "KenPC"), tick.to.toTimestamp.seconds, 18))
-        Mockito.verify(sender).appendPoint(DataPoint("histogram/foo/90", Map("host" -> "KenPC"), tick.to.toTimestamp.seconds, 30))
-        Mockito.verify(sender).appendPoint(DataPoint("histogram/foo/99", Map("host" -> "KenPC"), tick.to.toTimestamp.seconds, 30))
+        Mockito.verify(sender).appendPoint(DataPoint("histogram/foo/count", Map("host" -> hostname), tick.to.toTimestamp.seconds, 3))
+        Mockito.verify(sender).appendPoint(DataPoint("histogram/foo/rate", Map("host" -> hostname), tick.to.toTimestamp.seconds, 3))
+        Mockito.verify(sender).appendPoint(DataPoint("histogram/foo/min", Map("host" -> hostname), tick.to.toTimestamp.seconds, 10))
+        Mockito.verify(sender).appendPoint(DataPoint("histogram/foo/max", Map("host" -> hostname), tick.to.toTimestamp.seconds, 30))
+        Mockito.verify(sender).appendPoint(DataPoint("histogram/foo/median", Map("host" -> hostname), tick.to.toTimestamp.seconds, 15))
+        Mockito.verify(sender).appendPoint(DataPoint("histogram/foo/mean", Map("host" -> hostname), tick.to.toTimestamp.seconds, 18))
+        Mockito.verify(sender).appendPoint(DataPoint("histogram/foo/90", Map("host" -> hostname), tick.to.toTimestamp.seconds, 30))
+        Mockito.verify(sender).appendPoint(DataPoint("histogram/foo/99", Map("host" -> hostname), tick.to.toTimestamp.seconds, 30))
      }
-
-//    "connect to the correct database" in new Fixture(influxDBConfig) {
-//      val testrecorder = buildRecorder("user/kamon")
-//      val http = setup(Map(testEntity -> testrecorder.collect(collectionContext)))
-//      val request = getHttpRequest(http)
-//
-//      val query = getQueryParameters(request.uri)
-//
-//      query("db") shouldBe influxDBConfig.getString("database")
-//    }
-//
-//    "use authentication and retention policy are defined" in new Fixture(configWithAuthAndRetention) {
-//      val testrecorder = buildRecorder("user/kamon")
-//      val http = setup(Map(testEntity -> testrecorder.collect(collectionContext)))
-//      val request = getHttpRequest(http)
-//
-//      val query = getQueryParameters(request.uri)
-//
-//      query("u") shouldBe configWithAuthAndRetention.getString("authentication.user")
-//      query("p") shouldBe configWithAuthAndRetention.getString("authentication.password")
-//      query("rp") shouldBe configWithAuthAndRetention.getString("retention-policy")
-//    }
-//
-//    "send counters in a correct format" in new Fixture(influxDBConfig) {
-//      val testrecorder = buildRecorder("user/kamon")
-//      (0 to 2).foreach(_ ⇒ testrecorder.counter.increment())
-//
-//      val http = setup(Map(testEntity -> testrecorder.collect(collectionContext)))
-//      val expectedMessage = s"kamon-counters,category=test,entity=user-kamon,hostname=$hostName,metric=metric-two value=3 ${from.millis * 1000000}"
-//
-//      val request = getHttpRequest(http)
-//      val requestData = request.payload.split("\n")
-//
-//      requestData should contain(expectedMessage)
-//    }
-//
-//    "send histograms in a correct format" in new Fixture(influxDBConfig) {
-//      val testRecorder = buildRecorder("user/kamon")
-//
-//      testRecorder.histogramOne.record(10L)
-//      testRecorder.histogramOne.record(5L)
-//
-//      val http = setup(Map(testEntity -> testRecorder.collect(collectionContext)))
-//      val expectedMessage = s"kamon-timers,category=test,entity=user-kamon,hostname=$hostName,metric=metric-one mean=7.5,lower=5,upper=10,p70.5=10,p50=5 ${from.millis * 1000000}"
-//
-//      val request = getHttpRequest(http)
-//      val requestData = request.payload.split("\n")
-//
-//      requestData should contain(expectedMessage)
-//    }
   }
 }
 
