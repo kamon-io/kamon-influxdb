@@ -40,7 +40,7 @@ libraryDependencies += "io.kamon" %% "kamon-opentsdb" % "0.6.6"
 Configuration
 -------------
 
-Please refer to the [reference configuration](src/main/resourcs/reference.conf) for more details.
+Please refer to the [reference configuration](src/main/resources/reference.conf) for more details.
 
 #### Common actions (i.e. TLDR)
 Connect to OpenTSDB - Set `kamon.opentsdb.direct.quorum` to your zookeeper quorum  
@@ -198,5 +198,5 @@ kamon.opentsdb.stats.integral = "leider.ken.application.IntegralStat"
 kamon.opentsdb.counter.stats = [ count, rate, integral ] 
 ```
 
-[OpenTSDB]: http://http://opentsdb.net/
+[OpenTSDB]: http://opentsdb.net/
 
