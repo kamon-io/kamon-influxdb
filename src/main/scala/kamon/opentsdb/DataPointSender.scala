@@ -1,11 +1,10 @@
 package kamon.opentsdb
 
-import akka.actor.ActorSystem
-import akka.event.Logging
 import com.stumbleupon.async.Callback
 import net.opentsdb.core.TSDB
 import net.opentsdb.utils.Config
 import org.hbase.async.HBaseClient
+import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
 
@@ -26,14 +25,17 @@ trait DataPointSender {
 }
 
 /**
-  * An [[DataPointSender]] implmentation that writes directly to HBase using the [[TSDB]] api
+  * An [[DataPointSender]] implementation that writes directly to HBase using the [[TSDB]] api
   */
-class DirectDataPointSender(system: ActorSystem, quorum : String) extends DataPointSender {
-   val log = Logging(system, classOf[DirectDataPointSender])
+class DirectDataPointSender(quorum : String) extends DataPointSender {
+   val logger = LoggerFactory.getLogger(classOf[DirectDataPointSender])
+
+   // TODO Need some way to send in configuration
    val db = new TSDB(new HBaseClient(quorum), new Config(false))
    db.getConfig.setAutoMetric(true)
 
    override def appendPoint(point: DataPoint): Unit = {
+      logger.debug(s"Storing '${point.value}' for metric '${point.metric}' with value '${point.tags}'")
       val deferred = point.value match {
          case value : Double => db.addPoint(point.metric, point.timestamp, value, point.tags.asJava)
          case value : Long => db.addPoint(point.metric, point.timestamp, value, point.tags.asJava)
@@ -41,7 +43,7 @@ class DirectDataPointSender(system: ActorSystem, quorum : String) extends DataPo
 
       deferred.addErrback(new Callback[Unit, Object] {
          override def call(arg: Object): Unit = {
-            log.warning(arg.toString)
+            logger.warn(arg.toString)
          }
       })
    }

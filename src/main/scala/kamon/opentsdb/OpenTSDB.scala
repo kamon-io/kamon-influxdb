@@ -36,9 +36,8 @@ class OpenTSDBExtension(system: ExtendedActorSystem) extends Kamon.Extension {
 
   Logging(system, classOf[OpenTSDBExtension]).info("Starting the Kamon(OpenTSDB) extension")
 
-  private val config = system.settings.config
-  private val openTSDBConfig = config.getConfig("kamon.opentsdb")
-  val sender = new DirectDataPointSender(system, config.getString("direct.quorum"))
+  private val openTSDBConfig = system.settings.config.getConfig("kamon.opentsdb")
+  val sender = new DirectDataPointSender(openTSDBConfig.getString("direct.quorum"))
   protected val metricsListener = system.actorOf(DataPointGeneratingActor.props(openTSDBConfig, sender), "opentsdb-metrics-generator")
 
   protected val subscriptions = openTSDBConfig.getConfig("subscriptions")

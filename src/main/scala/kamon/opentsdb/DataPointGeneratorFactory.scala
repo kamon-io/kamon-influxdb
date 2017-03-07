@@ -3,7 +3,7 @@ package kamon.opentsdb
 import java.util.regex.Pattern
 
 import akka.actor.ReflectiveDynamicAccess
-import com.typesafe.config.Config
+import com.typesafe.config.{Config, ConfigFactory}
 
 import scala.collection.JavaConverters._
 import scala.collection.immutable
@@ -66,11 +66,12 @@ class DataPointGeneratorFactory(config : Config, defaultPath : String = "default
    }
 
    def createTagGenerator(path : String) : MetricTagGenerator = {
-      val tagConfig = if (config.hasPath(s"$path.tags")) {
-         config.getConfig(s"$path.tags")
+      val tagConfigs = if (config.hasPath(s"$path.tags")) {
+         config.getConfigList(s"$path.tags")
       } else {
-         config.getConfig(s"$defaultPath.tags")
+         config.getConfigList(s"$defaultPath.tags")
       }
+      val tagConfig = tagConfigs.asScala.headOption.getOrElse(ConfigFactory.empty())
 
       val generators = configToMap(tagConfig).collect {
          case (key, value) => key -> NormalizedRule(ruleLookup(value), tagNormalizers)

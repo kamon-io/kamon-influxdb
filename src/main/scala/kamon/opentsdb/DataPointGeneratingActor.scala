@@ -16,11 +16,15 @@
 
 package kamon.opentsdb
 
+import java.time.{Instant, LocalTime, ZonedDateTime}
+
 import akka.actor.{Actor, Props}
 import akka.event.Logging
 import com.typesafe.config.Config
 import kamon.metric.SubscriptionsDispatcher.TickMetricSnapshot
 import kamon.util.ConfigTools.Syntax
+import kamon.util.MilliTimestamp
+
 import scala.collection.JavaConverters._
 
 
@@ -34,6 +38,9 @@ object DataPointGeneratingActor {
   */
 class DataPointGeneratingActor(config: Config, sender : DataPointSender) extends Actor {
    implicit protected val actorSystem = context.system
+   def toLocalTime(timestamp : MilliTimestamp) = {
+      LocalTime.from(Instant.ofEpochMilli(timestamp.millis).atZone(ZonedDateTime.now().getZone))
+   }
 
    // Create all the DataPointGenerators
    val factory = new DataPointGeneratorFactory(config)
@@ -49,7 +56,7 @@ class DataPointGeneratingActor(config: Config, sender : DataPointSender) extends
 
    def receive = {
       case tick: TickMetricSnapshot =>
-         Logging(context.system, this).info("processing tick")
+         Logging(context.system, this).debug(s"Processing tick from ${toLocalTime(tick.from)} to ${toLocalTime(tick.to)}")
          for {
             (entity, snapshot) <- tick.metrics
             (metricKey, metricSnapshot) <- snapshot.metrics

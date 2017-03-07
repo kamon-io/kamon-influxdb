@@ -1,3 +1,5 @@
+import sbt.ExclusionRule
+
 /* =========================================================================================
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file
@@ -17,7 +19,8 @@ val opentsdb = "net.opentsdb" % "opentsdb" % "2.3.0" excludeAll(
    ExclusionRule(organization = "ch.qos.logback"),
    ExclusionRule(organization = "com.google.gwt"),
    ExclusionRule(organization = "net.opentsdb", artifact = "opentsdb_gwt_theme"),
-   ExclusionRule(organization = "org.jgrapht")
+   ExclusionRule(organization = "org.jgrapht"),
+   ExclusionRule(organization = "ch.qos.logback")
    )
 
 val hbase = "org.hbase" % "asynchbase" % "1.7.2"
@@ -27,7 +30,7 @@ parallelExecution in Test in Global := false
 crossScalaVersions := Seq("2.10.6", "2.11.8", "2.12.1")
 
 libraryDependencies ++=
-    compileScope(kamonCore, akkaDependency("slf4j").value, opentsdb, hbase) ++
+    compileScope(kamonCore, slf4jApi, opentsdb, hbase) ++
     testScope(scalatest, akkaDependency("testkit").value, slf4jApi, slf4jnop,
        "org.mockito" % "mockito-all" % "1.10.19"
     )
