@@ -101,7 +101,7 @@ kamon.opentsdb.default.tags = {app = application, host = host}
 #### Stats
 
 Many statistics can be calculated for each Kamon metric, and ,by default,
-each statistics will be stored as a separate OpenTSDB metric.
+each statistic will be stored as a separate OpenTSDB metric.
 
 ```typesafeconfig
 kamon.opentsdb.default.stats = [ count, rate, min, max, median, mean, 90, 99 ]
@@ -117,17 +117,17 @@ __Counter stats__
 __Histogram Stats__
 * __count__: The number of values stored in the histogram
 * __rate__: The number of values stored in the histogram divided by the tick length in seconds
-* __mean__: The average value.
-* __max__: The highest value.
-* __min__: The lowest value.
-* __median__: The median value (synonym for "50"
+* __mean__: The average of all values stored during the tick
+* __max__: The largest value stored during the tick
+* __min__: The smallest value stored during the tick
+* __median__: The median value (synonym for "50")
 
 Additionally, numeric values in the stat list, will generate percentile statistics in the OpenTSDB database.
 * __50__: 50th percentile
 * __70.5__: 70.5th percentile
 * __90__: 90th percentile
 
-See [Extensibility] to learn how to create your own stats.
+See [Extensibility](#extensibility) to learn how to create your own stats.
 
 #### Rules
 
@@ -143,9 +143,9 @@ See [Extensibility](#extensibility) to learn how to create your own rules.
 
 ### Customization
 
-Metrics can be customized at the global, category, and metric level.
+Metrics can be customized at the global, category, and individual metric level.
 
-To make alteration at a global level, alter the children of 'kamon.opentsdb.default'
+To make alteration at the global level, alter the children of `kamon.opentsdb.default`
 
 To make alteration at a category level, add entries to `kamon.opentsdb.category`.
 Any values not set on the category level, will be inherited from the defaults.
@@ -154,8 +154,8 @@ Any values not set on the category level, will be inherited from the defaults.
 kamon.opentsdb.category.counter = { name = [ metric ], stats = [count ] }
 ```
 
-This configuration will change the *name* and *stats* recorded for counter metrics, but
-the *tags* and *timestamp* from `kamon.opentsdb.default` will be used.
+This configuration will change the [name](#metric-name) and [stats](#stats) recorded for counter metrics, but
+the [tags](#metric-tags) and *timestamp* from `kamon.opentsdb.default` will be used.
 
 To make alterations for a specific metric, add entries to `kamon.opentsdb.metrics`. 
 Any values not set on the metric level, will be inherited from the defaults. 
@@ -164,15 +164,15 @@ Any values not set on the metric level, will be inherited from the defaults.
 kamon.opentsdb.metrics.my-metric-name = { stats = [ 90, 95, 99, 99.9, 99.999 ] }
 ```
 
-Here the *name*, *tags*, and *timestamp* from the defaults will be used.
+Here the [name](#metric-name), [tags](#metric-tags), and *timestamp* from the defaults will be used.
 You should probably avoiding using the same metric name with difference categories,
 as the results may not be exactly what you would like.
 
 ### Extensibility
 
 You can add static values to your metric names and tags by adding
-entries of the format `kamon.opentsdb.rules.<name>.value = "some string"`
-These values can be referenced in *name* and *tags* by using *name*
+entries of the format `kamon.opentsdb.rules.<rule-name>.value = "some string"`
+These values can be referenced in [name](#metric-name) and [tags](#metric-tags) by using *rule-name*
 
 EX.
 ```typesafeconfig
@@ -180,7 +180,7 @@ kamon.opentsdb.rules.cluster.value = "EC2"
 kamon.opentsdb.default.name = [ cluster, application, category, entity, metric, stat]
 ```
 
-You can create your own dynamic rules by subclassing kamon.opentsdb.Rule and adding
+You can create your own dynamic rules by subclassing `kamon.opentsdb.Rule` and adding
 an entry of the format `kamon.opentsdb.rules.<name>.generator = "fully.qualified.class.name"`
 
 EX.
@@ -189,7 +189,7 @@ kamon.opentsdb.rules.timezone.generator = "leider.ken.application.TimezoneRule"
 kamon.opentsdb.tags = { host = host, tz = timezone }
 ```
 
-You can create you own stats by subclassing kamon.opentsdb.Stat and adding
+You can create you own stats by subclassing `kamon.opentsdb.Stat` and adding
 an entry of the format `kamon.opentsdb.stats.<name> = "fully.qualified.class.name"`
 
 EX.
