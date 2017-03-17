@@ -1,5 +1,6 @@
+import sbt.ExclusionRule
+
 /* =========================================================================================
- * Copyright © 2013-2017 the kamon project <http://kamon.io/>
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file
  * except in compliance with the License. You may obtain a copy of the License at
@@ -14,14 +15,24 @@
  */
 
 val kamonCore         = "io.kamon"                  %%  "kamon-core"            % "0.6.6"
-val asyncHttpClient   = "org.asynchttpclient"       %   "async-http-client"     % "2.0.24"
+val opentsdb = "net.opentsdb" % "opentsdb" % "2.3.0" excludeAll(
+   ExclusionRule(organization = "ch.qos.logback"),
+   ExclusionRule(organization = "com.google.gwt"),
+   ExclusionRule(organization = "net.opentsdb", artifact = "opentsdb_gwt_theme"),
+   ExclusionRule(organization = "org.jgrapht"),
+   ExclusionRule(organization = "ch.qos.logback")
+   )
 
-name := "kamon-influxdb"
-
+val hbase = "org.hbase" % "asynchbase" % "1.7.2"
+name := "kamon-opentsdb"
+isSnapshot := true
 parallelExecution in Test in Global := false
+crossScalaVersions := Seq("2.10.6", "2.11.8", "2.12.1")
 
 libraryDependencies ++=
-    compileScope(kamonCore, akkaDependency("slf4j").value, asyncHttpClient) ++
-    testScope(scalatest, akkaDependency("testkit").value, slf4jApi, slf4jnop)
+    compileScope(kamonCore, slf4jApi, opentsdb, hbase) ++
+    testScope(scalatest, akkaDependency("testkit").value, slf4jApi, slf4jnop,
+       "org.mockito" % "mockito-all" % "1.10.19"
+    )
 
 resolvers += Resolver.bintrayRepo("kamon-io", "releases")

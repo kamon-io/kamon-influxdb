@@ -14,28 +14,24 @@
  * =========================================================================================
  */
 
-package kamon.influxdb
+package kamon.opentsdb
 
 import java.lang.management.ManagementFactory
+import java.time.Instant
 
-import akka.actor.{ ActorRef, Props }
-import akka.io.Udp
-import akka.testkit.TestProbe
-import kamon.Kamon
-import kamon.metric.SubscriptionsDispatcher.TickMetricSnapshot
-import kamon.metric.instrument.{ Counter, InstrumentFactory }
-import kamon.metric.{ Entity, EntityRecorderFactory, EntitySnapshot, GenericEntityRecorder }
+import kamon.metric._
+import kamon.metric.instrument.{Counter, InstrumentFactory}
 import kamon.util.MilliTimestamp
 
 trait SenderFixture {
+  val metrics : MetricsModuleImpl
   val hostName = ManagementFactory.getRuntimeMXBean.getName.split('@')(1)
 
-  val testEntity = Entity("user/kamon", "test")
-  val from = MilliTimestamp.now
+  val from = MilliTimestamp(Instant.now().minusMillis(1000).toEpochMilli)
   val to = MilliTimestamp.now
 
   def buildRecorder(name: String): TestEntityRecorder =
-    Kamon.metrics.entity(TestEntityRecorder, name)
+    metrics.entity(TestEntityRecorder, name)
 }
 
 class TestEntityRecorder(instrumentFactory: InstrumentFactory) extends GenericEntityRecorder(instrumentFactory) {
@@ -44,6 +40,6 @@ class TestEntityRecorder(instrumentFactory: InstrumentFactory) extends GenericEn
 }
 
 object TestEntityRecorder extends EntityRecorderFactory[TestEntityRecorder] {
-  def category: String = "test"
+  def category: String = "testEntity"
   def createRecorder(instrumentFactory: InstrumentFactory): TestEntityRecorder = new TestEntityRecorder(instrumentFactory)
 }
