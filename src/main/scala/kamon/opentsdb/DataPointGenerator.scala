@@ -16,17 +16,35 @@
 
 package kamon.opentsdb
 
-class DataPointGenerator(stats : Seq[Stat],
-                         nameGenerator : MetricNameGenerator,
-                         tagGenerator : MetricTagGenerator,
-                         timeGenerator : TimestampGenerator
-                        ) {
+import kamon.metric.instrument.{Counter, Histogram}
+
+trait DataPointGenerator {
+   def apply(ctx : MetricContext): Seq[DataPoint]
+}
+
+class NonIdleDecorator(generator : DataPointGenerator) extends DataPointGenerator {
+   def apply(ctx : MetricContext): Seq[DataPoint] = {
+      ctx.snapshot match {
+         case cs : Counter.Snapshot if cs.count == 0 => Seq()
+         case hs : Histogram.Snapshot if hs.numberOfMeasurements == 0 => Seq()
+         case _ => generator(ctx)
+      }
+   }
+}
+
+class DataPointGeneratorImpl(stats : Seq[Stat],
+                             nameGenerator : MetricNameGenerator,
+                             tagGenerator : MetricTagGenerator,
+                             timeGenerator : TimestampGenerator
+                            ) extends DataPointGenerator {
    def apply(ctx : MetricContext): Seq[DataPoint] = {
       stats.flatMap { stat =>
          val name = nameGenerator(ctx, stat)
          val tags = tagGenerator(ctx, stat)
          val pf = stat(ctx)
-         pf.lift(ctx.snapshot).map { value => DataPoint(name, tags, timeGenerator(ctx, stat), value) }
+         pf.lift(ctx.snapshot).map { value =>
+            DataPoint(name, tags, timeGenerator(ctx, stat), value)
+         }
       }
    }
 }

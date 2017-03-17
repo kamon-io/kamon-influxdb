@@ -92,10 +92,12 @@ Empty rules are removed from the metric name
 #### Metric Tags
 
 All tags associated with the kamon metric will be passed through to OpenTSDB.
-Additional tags may be added by mapping tag names to [rules](#rules)
+Additional tags may be added by mapping tag names to [rules](#rules).
+A tag will be named the exact value listed in the config, if you would like
+a different name, create a new rule (See [Extensibility](#extensibility))
 
 ```typesafeconfig
-kamon.opentsdb.default.tags = {app = application, host = host}
+kamon.opentsdb.default.tags = [ application, host ]
 ```
 
 #### Stats
@@ -140,6 +142,9 @@ See [Extensibility](#extensibility) to learn how to create your own stats.
 
 See [Extensibility](#extensibility) to learn how to create your own rules.
 
+#### Idle metrics
+if `filterIdle` is true, don't send values to opentsdb for inactive metrics, 
+as opposed to sending 0 for all stats. 
 
 ### Customization
 
@@ -158,15 +163,14 @@ This configuration will change the [name](#metric-name) and [stats](#stats) reco
 the [tags](#metric-tags) and *timestamp* from `kamon.opentsdb.default` will be used.
 
 To make alterations for a specific metric, add entries to `kamon.opentsdb.metrics`. 
-Any values not set on the metric level, will be inherited from the defaults. 
+Any values not set on the metric level, will be inherited from the category and defaults. 
 
 ```typesafeconfig
-kamon.opentsdb.metrics.my-metric-name = { stats = [ 90, 95, 99, 99.9, 99.999 ] }
+kamon.opentsdb.metrics."my.metric.name" = { stats = [ 90, 95, 99, 99.9, 99.999 ], filterIdle = false }
 ```
 
-Here the [name](#metric-name), [tags](#metric-tags), and *timestamp* from the defaults will be used.
-You should probably avoiding using the same metric name with difference categories,
-as the results may not be exactly what you would like.
+Here the [name](#metric-name), [tags](#metric-tags), and *timestamp* from the defaults will be used, unless
+the metric is a "counter", in which case the [name](#metric-name) and [stats](#stats) from above will be used.
 
 ### Extensibility
 

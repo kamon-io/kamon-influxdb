@@ -35,11 +35,11 @@ trait SenderFixture {
 }
 
 class TestEntityRecorder(instrumentFactory: InstrumentFactory) extends GenericEntityRecorder(instrumentFactory) {
-  val histogramOne = histogram("metric-one/happy")
+  val histogramOne = histogram("metric-one")
   val counter: Counter = counter("metric-two")
 }
 
 object TestEntityRecorder extends EntityRecorderFactory[TestEntityRecorder] {
-  def category: String = "test"
+  def category: String = "testEntity"
   def createRecorder(instrumentFactory: InstrumentFactory): TestEntityRecorder = new TestEntityRecorder(instrumentFactory)
 }

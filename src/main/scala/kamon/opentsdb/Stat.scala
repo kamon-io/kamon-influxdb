@@ -31,7 +31,7 @@ trait DoubleStat extends Stat {
   * Can only be applied to [[Histogram.Snapshot]]
   */
 class PercentileStat(val name : String) extends LongStat {
-   val percentile = java.lang.Long.parseLong(name)
+   val percentile = java.lang.Double.parseDouble(name)
    override def apply(ctx : MetricContext) = {
       case ss : Histogram.Snapshot => ss.percentile(percentile)
    }

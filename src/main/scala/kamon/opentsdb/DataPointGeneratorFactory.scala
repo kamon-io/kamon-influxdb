@@ -4,16 +4,19 @@ import java.util.regex.Pattern
 
 import akka.actor.ReflectiveDynamicAccess
 import com.typesafe.config.{Config, ConfigFactory}
+import kamon.util.ConfigTools.Syntax
 
 import scala.collection.JavaConverters._
 import scala.collection.immutable
-import kamon.util.ConfigTools.Syntax
+import scala.util.Try
 
 
 /**
   * Creates [[DataPointGenerator]] based on the configuration.
   */
 class DataPointGeneratorFactory(config : Config, defaultPath : String = "default") {
+
+   val defaults = config.getConfig(defaultPath)
 
    val ruleLookup = {
       val dynamic = new ReflectiveDynamicAccess(getClass.getClassLoader)
@@ -45,47 +48,52 @@ class DataPointGeneratorFactory(config : Config, defaultPath : String = "default
    }.toSeq
 
 
-   def createDataPointGenerator(path : String): DataPointGenerator = {
-      new DataPointGenerator(
-         createStats(path),
-         createNameGenerator(path),
-         createTagGenerator(path),
-         createTimestampGenerator(path))
+   def createCategoryGenerator(category : String) : DataPointGenerator = {
+      val categoryConfig = Try(config.getConfig(s"""category."$category"""")).getOrElse(ConfigFactory.empty())
+      createDataPointGenerator(categoryConfig.withFallback(defaults))
    }
 
-   def createNameGenerator(path : String) : MetricNameGenerator = {
-      val list = if (config.hasPath(s"$path.name")) {
-         config.getStringList(s"$path.name")
-      } else {
-         config.getStringList(s"$defaultPath.name")
+   def createMetricGenerator(metricName : String, category : String) : DataPointGenerator = {
+      val metricConfig = config.getConfig(s"""metrics."$metricName"""")
+      val categoryConfig = Try(config.getConfig(s"""category."$category"""")).getOrElse(ConfigFactory.empty())
+
+      createDataPointGenerator(metricConfig.withFallback(categoryConfig).withFallback(defaults))
+   }
+
+
+   def createDataPointGenerator(generatorConfig : Config): DataPointGenerator = {
+      var generator : DataPointGenerator = new DataPointGeneratorImpl(
+         createStats(generatorConfig),
+         createNameGenerator(generatorConfig),
+         createTagGenerator(generatorConfig),
+         createTimestampGenerator(generatorConfig))
+
+      if (generatorConfig.getBoolean("filterIdle")) {
+         generator = new NonIdleDecorator(generator)
       }
+      generator
+   }
+
+   def createNameGenerator(generatorConfig : Config) : MetricNameGenerator = {
+      val list = generatorConfig.getStringList(s"name")
 
       val rules = list.asScala.toList.map(ruleLookup).map { NormalizedRule(_, nameNormalizers) }
 
       new MetricNameGenerator(rules, nameSeparator)
    }
 
-   def createTagGenerator(path : String) : MetricTagGenerator = {
-      val tagConfigs = if (config.hasPath(s"$path.tags")) {
-         config.getConfigList(s"$path.tags")
-      } else {
-         config.getConfigList(s"$defaultPath.tags")
-      }
-      val tagConfig = tagConfigs.asScala.headOption.getOrElse(ConfigFactory.empty())
+   def createTagGenerator(generatorConfig : Config) : MetricTagGenerator = {
+      val list = generatorConfig.getStringList(s"tags")
 
-      val generators = configToMap(tagConfig).collect {
-         case (key, value) => key -> NormalizedRule(ruleLookup(value), tagNormalizers)
-      }
+      val generators = list.asScala.toList.map { name =>
+         name -> NormalizedRule(ruleLookup(name), tagNormalizers)
+      }.toMap
 
       new MetricTagGenerator(generators)
    }
 
-   def createStats(path : String) : Seq[Stat] = {
-      val stats = if (config.hasPath(s"$path.tags")) {
-         config.getStringList(s"$path.stats")
-      } else {
-         config.getStringList(s"$defaultPath.stats")
-      }
+   def createStats(generatorConfig : Config) : Seq[Stat] = {
+      val stats = generatorConfig.getStringList("stats")
 
       val dynamic = new ReflectiveDynamicAccess(getClass.getClassLoader)
       stats.asScala.toList.map { stat : String =>
@@ -98,14 +106,8 @@ class DataPointGeneratorFactory(config : Config, defaultPath : String = "default
       }
    }
 
-   def createTimestampGenerator(path : String) = {
-      val value = if (config.hasPath(s"$path.timestamp")) {
-         config.getString(s"$path.timestamp")
-      } else {
-         config.getString(s"$defaultPath.timestamp")
-      }
-
-      value match {
+   def createTimestampGenerator(generatorConfig : Config) = {
+      generatorConfig.getString("timestamp")  match {
          case "seconds" => SecondTimestampGenerator
          case "milliseconds" => MilliSecondTimestampGenerator
       }

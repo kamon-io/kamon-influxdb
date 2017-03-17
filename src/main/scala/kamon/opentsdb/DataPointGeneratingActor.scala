@@ -26,6 +26,7 @@ import kamon.util.ConfigTools.Syntax
 import kamon.util.MilliTimestamp
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 
 
 object DataPointGeneratingActor {
@@ -45,12 +46,11 @@ class DataPointGeneratingActor(config: Config, sender : DataPointSender) extends
    // Create all the DataPointGenerators
    val factory = new DataPointGeneratorFactory(config)
 
-   val metricGenerators = config.getObject("metrics").keySet().asScala.collect {
-      case name => name -> factory.createDataPointGenerator(s"metrics.${name}")
-   }.toMap
+   val namedMetrics = config.getObject("metrics").keySet().asScala
+   val metricGenerators = mutable.Map[(String, String), DataPointGenerator]()
 
    val categoryGenerators = config.getConfig("subscriptions").firstLevelKeys.collect {
-      case category => category -> factory.createDataPointGenerator(s"category.${category}")
+      case category => category -> factory.createCategoryGenerator(category)
    }.toMap
 
 
@@ -61,8 +61,14 @@ class DataPointGeneratingActor(config: Config, sender : DataPointSender) extends
             (entity, snapshot) <- tick.metrics
             (metricKey, metricSnapshot) <- snapshot.metrics
          } yield {
+            val generator = metricGenerators.getOrElseUpdate((entity.category, entity.name), {
+               if (namedMetrics.contains(entity.name)) {
+                  factory.createMetricGenerator(entity.name, entity.category)
+               } else {
+                  categoryGenerators(entity.category)
+               }
+            })
             val ctx = MetricContext(tick, entity, metricKey, metricSnapshot)
-            val generator = metricGenerators.getOrElse(entity.name, categoryGenerators(entity.category))
             val points = generator(ctx)
             points.foreach(sender.appendPoint)
          }
