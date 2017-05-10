@@ -49,22 +49,14 @@ trait TagsGenerator {
   }
 
   protected def generateTags(entity: Entity, metricKey: MetricKey): Map[String, String] = {
-    val baseTags = entity.category match {
-      case "trace-segment" ⇒
-        Seq(
-          "category" -> normalize(entity.tags("trace")),
-          "entity" -> normalize(entity.name),
-          "hostname" -> normalize(hostname),
-          "metric" -> normalize(metricKey.name))
-      case _ ⇒
-        Seq(
-          "category" -> normalize(entity.category),
-          "entity" -> normalize(entity.name),
-          "hostname" -> normalize(hostname),
-          "metric" -> normalize(metricKey.name))
-    }
-    if (extraTags.isEmpty && entity.tags.isEmpty) Map(baseTags: _*) // up to 4 elements Map preserves order?
-    else ListMap((baseTags ++ extraTags ++ entity.tags).sortBy(_._1): _*)
+    val baseTags = Seq(
+      "category" -> normalize(entity.category),
+      "entity" -> normalize(entity.name),
+      "hostname" -> normalize(hostname),
+      "metric" -> normalize(metricKey.name))
+    val entityTags = if (entity.category == "trace-segment") entity.tags - "category" else entity.tags
+    if (extraTags.isEmpty && entityTags.isEmpty) Map(baseTags: _*) // up to 4 elements Map preserves order?
+    else ListMap((baseTags ++ extraTags ++ entityTags).sortBy(_._1): _*) // from InfluxDB's "Line Protocol Tutorial": For best performance you should sort tags by key before sending them to the database.
   }
 
   protected def histogramValues(hs: Histogram.Snapshot): Map[String, BigDecimal] = {
