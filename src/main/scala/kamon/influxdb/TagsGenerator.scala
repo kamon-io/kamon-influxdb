@@ -63,23 +63,24 @@ trait TagsGenerator extends TagNormalizer{
   }
 
   protected def histogramValues(hs: Histogram.Snapshot): Map[String, BigDecimal] = {
-    val measurements =
-      if (includeMeasurements) Map("measurements" -> BigDecimal(hs.numberOfMeasurements))
-      else Map.empty
-    val defaults = Map(
+    val bldr = Map.newBuilder[String, BigDecimal]
+    bldr ++= Seq(
       "lower" -> BigDecimal(hs.min),
       "mean" -> average(hs),
-      "upper" -> BigDecimal(hs.max)) ++ measurements
+      "upper" -> BigDecimal(hs.max))
+    if (includeMeasurements) bldr += ("measurements" -> BigDecimal(hs.numberOfMeasurements))
 
-    percentiles.foldLeft(defaults) { (acc, p) ⇒
+    percentiles.foreach { p ⇒
       val fractional = p % 1
       val integral = (p - fractional).toInt
 
       val percentile = BigDecimal(hs.percentile(p))
 
-      if (fractional > 0.0) acc ++ Map(s"p$p" -> percentile)
-      else acc ++ Map(s"p$integral" -> percentile)
+      if (fractional > 0.0) bldr += (s"p$p" -> percentile)
+      else bldr += (s"p$integral" -> percentile)
     }
+    
+    bldr.result
   }
 
   private def average(histogram: Histogram.Snapshot): BigDecimal = {
