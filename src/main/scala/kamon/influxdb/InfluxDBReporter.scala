@@ -150,10 +150,10 @@ object InfluxDBReporter {
     val host = root.getString("hostname")
     val port = root.getInt("port")
     val database = root.getString("database")
-    val url = s"http://${host}:${port}/write?precision=s&db=${database}"
+    val protocol = root.getString("protocol").toLowerCase
+    val url = s"$protocol://$host:$port/write?precision=s&db=$database"
 
     val additionalTags = EnvironmentTagBuilder.create(root.getConfig("additional-tags"))
-
     Settings(
       url,
       root.getDoubleList("percentiles").asScala.map(_.toDouble),
