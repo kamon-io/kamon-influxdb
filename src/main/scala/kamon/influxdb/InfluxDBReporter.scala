@@ -132,7 +132,7 @@ class InfluxDBReporter extends MetricReporter {
       .append("\n")
   }
 
-  private def buildClient(settings: Settings): OkHttpClient = {
+  protected def buildClient(settings: Settings): OkHttpClient = {
     new OkHttpClient.Builder().build()
   }
 }
@@ -161,3 +161,4 @@ object InfluxDBReporter {
     )
   }
 }
+

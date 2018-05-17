@@ -5,13 +5,16 @@ import java.time.Instant
 import java.util.concurrent.TimeUnit
 
 import com.typesafe.config.ConfigFactory
+import javax.net.ssl.SSLContext
 import kamon.Kamon
 import kamon.metric._
 import kamon.testkit.MetricInspection
 import okhttp3.mockwebserver.{MockResponse, MockWebServer}
 import org.scalatest._
-
 import kamon.influxdb.InfluxDBCustomMatchers._
+import kamon.influxdb.InfluxDBReporter.Settings
+import okhttp3.OkHttpClient
+import okhttp3.internal.tls.SslClient
 
 class InfluxDBReporterSpec extends WordSpec with Matchers with BeforeAndAfterAll {
 
@@ -22,6 +25,42 @@ class InfluxDBReporterSpec extends WordSpec with Matchers with BeforeAndAfterAll
            |kamon.influxdb {
            |  hostname = ${influxDB.getHostName}
            |  port = ${influxDB.getPort}
+           |
+           |  additional-tags {
+           |    service = no
+           |    host = no
+           |    instance = no
+           |
+           |    blacklisted-tags = [ "env", "context" ]
+           |  }
+           |}
+      """.stripMargin
+      ).withFallback(Kamon.config()))
+
+      reporter.reportPeriodSnapshot(periodSnapshot)
+      val reportedLines = influxDB.takeRequest(10, TimeUnit.SECONDS).getBody.readString(Charset.forName("UTF-8")).split("\n")
+
+      val expectedLines = List(
+        "custom.user.counter count=42i 1517000993",
+        "jvm.heap-size value=150000000i 1517000993",
+        "akka.actor.errors,path=as/user/actor count=10i 1517000993",
+        "my.histogram,one=tag count=4i,sum=13i,min=1i,p50.0=2.0,p70.0=4.0,p90.0=6.0,p95.0=6.0,p99.0=6.0,p99.9=6.0,max=6i 1517000993",
+        "queue.monitor,one=tag count=4i,sum=13i,min=1i,p50.0=2.0,p70.0=4.0,p90.0=6.0,p95.0=6.0,p99.0=6.0,p99.9=6.0,max=6i 1517000993"
+      )
+
+      reportedLines.sorted.zip(expectedLines.sorted) foreach {
+        case (reported, expected) => reported should matchExpectedLineProtocolPoint(expected)
+      }
+
+    }
+    "convert and post all metrics using the line protocol over HTTPS" in {
+      influxDB.useHttps(SslClient.localhost().socketFactory, false)
+      reporter.reconfigure(ConfigFactory.parseString(
+        s"""
+           |kamon.influxdb {
+           |  hostname = ${influxDB.getHostName}
+           |  port = ${influxDB.getPort}
+           |  protocol = "https"
            |
            |  additional-tags {
            |    service = no
@@ -84,7 +123,16 @@ class InfluxDBReporterSpec extends WordSpec with Matchers with BeforeAndAfterAll
   }
 
   val influxDB = new MockWebServer()
-  val reporter = new InfluxDBReporter()
+  val reporter = new InfluxDBReporter {
+    override protected def buildClient(settings: Settings): OkHttpClient = {
+      super.buildClient(settings)
+        .newBuilder()
+        .sslSocketFactory(
+          SslClient.localhost().socketFactory,
+          SslClient.localhost().trustManager)
+        .build()
+    }
+  }
 
   val from = Instant.ofEpochSecond(1517000974)
   val to = Instant.ofEpochSecond(1517000993)
