@@ -159,7 +159,11 @@ object InfluxDBReporter {
     val credentials = authConfig.map(conf => Credentials.basic(conf.getString("user"), conf.getString("password")))
     val port = root.getInt("port")
     val database = root.getString("database")
-    val url = s"http://${host}:${port}/write?precision=s&db=${database}"
+    val authConfig = Try(root.getConfig("authentication")).toOption
+    val authString = authConfig.map{ cf =>
+      s"&u=${cf.getString("user")}&p=${cf.getString("password")}"
+    }.getOrElse("")
+    val url = s"http://${host}:${port}/write?precision=s&db=$database$authString"
 
     val additionalTags = EnvironmentTagBuilder.create(root.getConfig("additional-tags"))
 
