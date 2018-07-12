@@ -48,6 +48,7 @@ class InfluxDBReporterSpec extends WordSpec with Matchers with OptionValues {
     "convert and post all metrics using the line protocol over HTTPS" in new Fixture(extraConfig =
       s"""
          |kamon.influxdb {
+         |  protocol = "https"
          |  additional-tags {
          |    blacklisted-tags = [ "env", "context" ]
          |  }
