@@ -81,7 +81,7 @@ class InfluxDBReporter(config: Config = Kamon.config()) extends MetricReporter {
 
   private def writeNameAndTags(builder: StringBuilder, name: String, metricTags: Map[String, String]): Unit = {
     builder
-      .append(name)
+      .append(escapeName(name))
 
     val tags = if(settings.additionalTags.nonEmpty) metricTags ++ settings.additionalTags else metricTags
 
@@ -98,6 +98,11 @@ class InfluxDBReporter(config: Config = Kamon.config()) extends MetricReporter {
 
     builder.append(' ')
   }
+
+  private def escapeName(in: String): String =
+    in.replace(" ", "\\ ")
+      .replace(",", "\\,")
+
 
   private def escapeString(in: String): String =
     in.replace(" ", "\\ ")
